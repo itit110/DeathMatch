@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask",
     "com.unity.collab-proxy": "2.11.2",
     "com.unity.feature.development": "1.0.2",
     "com.unity.inputsystem": "1.18.0",
@@ -42,5 +43,21 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
-  }
+  },
+  "scopedRegistries": [
+    {
+      "name": "R3",
+      "url": "https://github.com/itit110/R3_fork.git",
+      "scopes": [
+        "R3"
+      ]
+    },
+    {
+      "name": "UniTask",
+      "url": "https://github.com/Cysharp/UniTask",
+      "scopes": [
+        "Cysharp.Threading.Tasks;"
+      ]
+    }
+  ]
 }
