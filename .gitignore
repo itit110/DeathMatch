@@ -1,0 +1,17 @@
+# Unityが自動生成する巨大なキャッシュ
+/[Ll]ibrary/
+/[Uu]serSettings/
+/[Ll]ogs/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Mm]emoryCaptures/
+
+# Visual Studio関連の一時ファイル
+.vs/
+.vscode/
+*.csproj
+*.sln
+*.user
+*.userprefs
