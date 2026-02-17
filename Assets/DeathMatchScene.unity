@@ -371,7 +371,7 @@ GameObject:
   - component: {fileID: 172278865}
   - component: {fileID: 172278864}
   - component: {fileID: 172278863}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Plane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -762,8 +762,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 15b67949db6afb94cbf53392db5ad9e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  viewPoint: {fileID: 521322190}
-  mouseSensitivity: 0.1
+  _viewPoint: {fileID: 521322190}
+  _mouseSensitivity: 0.1
+  activeMoveSpeed: 4
+  _jumpInterval: 0.2
+  jumpFprce: {x: 0, y: 6, z: 0}
+  groundCheckPoint: {fileID: 835726509}
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 64
+  rb: {fileID: 0}
+  walkSpeed: 4
+  runSpeed: 8
 --- !u!54 &792540776
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -816,7 +826,7 @@ Transform:
   m_GameObject: {fileID: 835726508}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.05, z: 0}
+  m_LocalPosition: {x: 0, y: -1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -834,7 +844,7 @@ GameObject:
   - component: {fileID: 1577332069}
   - component: {fileID: 1577332068}
   - component: {fileID: 1577332067}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Cube (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -946,7 +956,7 @@ GameObject:
   - component: {fileID: 1685057694}
   - component: {fileID: 1685057693}
   - component: {fileID: 1685057692}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1340,7 +1350,7 @@ GameObject:
   - component: {fileID: 1845612357}
   - component: {fileID: 1845612356}
   - component: {fileID: 1845612355}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Cube (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1452,7 +1462,7 @@ GameObject:
   - component: {fileID: 1848368603}
   - component: {fileID: 1848368602}
   - component: {fileID: 1848368601}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Cube (3)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
