@@ -34,11 +34,12 @@ public class PlayerController : MonoBehaviour
     public Rigidbody rb; // 剛体
 
     private bool _isJumping = false;// ジャンプ中かの判定用フラグ
-
+   
     // ────── 移動スピード ──────
     [Header("走る・移動スピード")]
     [SerializeField] public float walkSpeed = 4f;// 歩く速度
     [SerializeField] public float runSpeed = 8f;//　走る速度
+
 
     private void Start()
     {
@@ -48,11 +49,28 @@ public class PlayerController : MonoBehaviour
         // ────── コンポーネント取得 ──────
         rb = GetComponent<Rigidbody>();
 
-        //マウスを固定し非表示にする処理：FPSで使用
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        // ────── マウス表示処理R3 ──────
+        SetCursorLock(false);// マウスの表示初期セット
+
+        var kb = Keyboard.current;
+        var ms = Mouse.current;
+        Observable.EveryUpdate()
+            .Where(_ => kb != null && kb.escapeKey.wasPressedThisFrame)
+            .Subscribe(_ => SetCursorLock(true))
+            .RegisterTo(this.GetCancellationTokenOnDestroy());
+        Observable.EveryUpdate()
+            .Where(_ => ms != null && ms.leftButton.wasPressedThisFrame)
+            .Subscribe(_ => SetCursorLock(false))
+            .RegisterTo(this.GetCancellationTokenOnDestroy());
+
 
         //Sequence().Forget();// UniTaskキュー順次実行
+    }
+
+
+    private void Awake()
+    {
+        
     }
 
     private void Update()
@@ -67,6 +85,10 @@ public class PlayerController : MonoBehaviour
         {
             JumpAction().Forget();// UniTaskジャンプ関数呼び出し
         }
+
+        RunAction();// シフトで走る
+
+        
     }
 
     private void LateUpdate()//　カメラ用Update
@@ -144,13 +166,53 @@ public class PlayerController : MonoBehaviour
         return Physics.CheckSphere(groundCheckPoint.position, 0.2f, groundLayer);
     }
 
+    public void RunAction()// シフトキーをしている時は走る
+    {
+        var kb = Keyboard.current;
+        if(kb == null) return;
+
+        if(kb.shiftKey.isPressed || kb.leftShiftKey.isPressed)//　右シフトもしくは左シフト
+        {
+            activeMoveSpeed = runSpeed;
+        }
+        else
+        {
+            activeMoveSpeed = walkSpeed;
+        }
+    }
+
+    public void SetCursorLock(bool _isLocked)
+    {
+        // マウスを固定し非表示にする処理：FPSで使用
+        if (_isLocked)
+        {
+            Debug.Log("マウス表示");
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+        else if(!_isLocked)
+        {
+            Debug.Log("マウス非表示");
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;   
+        }
+       
+       
+        
+    }
+
+
+    // ──────────── 非同期処理・デバッグ処理 ──────────── 
+
     async UniTaskVoid Sequence()//ここに順次処理を書いていく
     {
-        
         Debug.Log("UniTask：ゲーム開始待機");
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
         await UniTask.Delay(1000);
         Debug.Log("UniTask：準備完了！ゲーム開始");
     }
+
 
     //　デバッグ用ギズモの可視化
     private void OnDrawGizmos()
@@ -178,23 +240,3 @@ public class PlayerController : MonoBehaviour
  * 
  * 
  */
-
-
-
-// R3：入力読み取り時にだけ通知
-/* ToDo R3まだ上手く使用できず 
-inputSubject
-    .Subscribe(_ =>
-    {
-        if(Mouse.current != null) // Null防止
-            {
-                _mouseDelta = Mouse.current.delta.ReadValue();
-            _verticalMouseInput = _mouseDelta.y;
-            }
-    })
-    .RegisterTo(this.GetCancellationTokenOnDestroy());
-
-Observable.IntervalFrame(1)
-    .Subscribe(_ => inputSubject.OnNext(Unit.Default))
-    .RegisterTo(this.GetCancellationTokenOnDestroy());
-*/
