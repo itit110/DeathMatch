@@ -4,6 +4,7 @@ using System;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections.Generic;
 
 
 public class PlayerController : MonoBehaviour
@@ -40,6 +41,17 @@ public class PlayerController : MonoBehaviour
     [SerializeField] public float walkSpeed = 4f;// 歩く速度
     [SerializeField] public float runSpeed = 8f;//　走る速度
 
+    // ────── マウス入力・キー入力 ──────
+    private Keyboard kb = Keyboard.current;
+    private Mouse ms = Mouse.current;
+
+    // ────── 武器関連 ──────
+
+    [Header("武器関連")]
+    [SerializeField] public List<GunController> guns = new List<GunController>();//　銃を配列で取得
+    [SerializeField] private int _selectedGun = 0;// 選んだ銃 １；ピストル ２：ショットガン ３：アサルトライフル
+    [SerializeField] private float _scrollTime = 0.2f; // 銃の切り替え遅延
+    private bool _isSwitcingGun = false;//　遅延フラグ
 
     private void Start()
     {
@@ -49,28 +61,44 @@ public class PlayerController : MonoBehaviour
         // ────── コンポーネント取得 ──────
         rb = GetComponent<Rigidbody>();
 
-        // ────── マウス表示処理R3 ──────
-        SetCursorLock(false);// マウスの表示初期セット
+        // ────── R3 通知があった際にのみ処理 ──────
 
-        var kb = Keyboard.current;
-        var ms = Mouse.current;
+        SetCursorLock(false);// マウスの表示初期セット
+        //　マウスカーソル表示非表示
+        Observable.EveryUpdate() //　条件を満たした際に通知
+            .Where(_ => kb != null && kb.escapeKey.wasPressedThisFrame)//　キー入力がある、かつEscapeキーが押された場合、
+            .Subscribe(_ => SetCursorLock(true))//　カーソルを表示
+            .RegisterTo(this.GetCancellationTokenOnDestroy());//　後処理
+
         Observable.EveryUpdate()
-            .Where(_ => kb != null && kb.escapeKey.wasPressedThisFrame)
-            .Subscribe(_ => SetCursorLock(true))
+            .Where(_ => ms != null && ms.leftButton.wasPressedThisFrame)//　マウス入力があるかつ右クリックが押された場合、
+            .Subscribe(_ => SetCursorLock(false))//　カーソルを非表示　
             .RegisterTo(this.GetCancellationTokenOnDestroy());
+
+        // シフトで走る  
         Observable.EveryUpdate()
-            .Where(_ => ms != null && ms.leftButton.wasPressedThisFrame)
-            .Subscribe(_ => SetCursorLock(false))
+            .Where(_ => kb != null && kb.shiftKey.isPressed || kb.leftShiftKey.isPressed)
+            .Subscribe(_ => RunAction(true))
             .RegisterTo(this.GetCancellationTokenOnDestroy());
+
+        // 銃の種類を切り替える
+        if (guns.Count > 0) switchGun();
+
+        Observable.EveryUpdate()
+            .Select(_ => ms.scroll.ReadValue().y)// Vector2型の変数にマウススクロールの値を取得
+            .Where(y => y != 0f)
+            .Subscribe(y => {
+                if (!_isSwitcingGun)
+                {
+                    SwitchingGuns(y).Forget();
+                }
+            })
+            .RegisterTo(this.GetCancellationTokenOnDestroy());
+
+        
 
 
         //Sequence().Forget();// UniTaskキュー順次実行
-    }
-
-
-    private void Awake()
-    {
-        
     }
 
     private void Update()
@@ -80,15 +108,20 @@ public class PlayerController : MonoBehaviour
 
         // 移動関数を呼び出し
         PlayerMove();
+
         // ジャンプ判定：地面に接地かつスペースキーを押しているかつ空中にいない
         if (IsGround() && Keyboard.current.spaceKey.wasPressedThisFrame && !_isJumping)// wasPressedで連続ジャンプ防止
         {
             JumpAction().Forget();// UniTaskジャンプ関数呼び出し
         }
 
-        RunAction();// シフトで走る
-
+        // 走っているかの判定：シフトキーが押されていない
+        if(IsGround() && kb.shiftKey.isPressed != true || kb.leftShiftKey.isPressed != true)
+        {
+            RunAction(false);
+        }
         
+       
     }
 
     private void LateUpdate()//　カメラ用Update
@@ -102,7 +135,7 @@ public class PlayerController : MonoBehaviour
     public void PlayerMove()
     {
         //キーボードの取得　varは推論型（右辺の型が明確な場合に使用。intやfloatでは明示的）
-        var kb = Keyboard.current;
+        //var kb = Keyboard.current;
         if (kb == null) return;
 
         // 水平横移動の動き
@@ -147,11 +180,8 @@ public class PlayerController : MonoBehaviour
     {
         _isJumping = true; // ジャンプ中
 
-        //キーボードの取得
-        var kb = Keyboard.current;
-
         // 物理的なジャンプ処理
-        var _velocity = rb.linearVelocity;
+        var _velocity = rb.linearVelocity;// 推論型 リニアー
         rb.linearVelocity = new Vector3(_velocity.x, 0, _velocity.z);
         rb.AddForce(jumpForce, ForceMode.Impulse);//スペースキーが入力された際に力を加える
 
@@ -166,18 +196,15 @@ public class PlayerController : MonoBehaviour
         return Physics.CheckSphere(groundCheckPoint.position, 0.2f, groundLayer);
     }
 
-    public void RunAction()// シフトキーをしている時は走る
+    public void RunAction(bool run)// シフトキーをしている時は走る
     {
-        var kb = Keyboard.current;
-        if(kb == null) return;
-
-        if(kb.shiftKey.isPressed || kb.leftShiftKey.isPressed)//　右シフトもしくは左シフト
+        if(run)//　右シフトもしくは左シフト
         {
-            activeMoveSpeed = runSpeed;
+            activeMoveSpeed = runSpeed;// 走る
         }
         else
         {
-            activeMoveSpeed = walkSpeed;
+            activeMoveSpeed = walkSpeed;//　歩きに戻る
         }
     }
 
@@ -196,13 +223,52 @@ public class PlayerController : MonoBehaviour
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;   
         }
-       
-       
-        
+    }
+
+    private async UniTaskVoid SwitchingGuns(float _scrollY)
+    {
+        if(guns.Count == 0) return;//デバッグ
+
+        _isSwitcingGun = true;//　遅延フラグON
+
+        if (_scrollY > 0f)//　マウスホイールが0より多い
+        {
+            _selectedGun++;
+            //　カウントでListに格納された要素数を返すList<Gun...>なら３
+            if (_selectedGun >= guns.Count)
+            {
+                _selectedGun = 0;
+            }
+        }
+        else if (_scrollY < 0f)//　マウスホイールが0以内
+        {
+            _selectedGun--;
+
+            if(_selectedGun < 0)
+            {
+                _selectedGun = guns.Count - 1;// 返ってきた要素数の値から1を引く
+            }
+        }
+        switchGun();
+        await UniTask.Delay(TimeSpan.FromSeconds(_scrollTime));//　銃切り替え時の遅延処理
+
+        _isSwitcingGun = false;//　遅延フラグオフ
+    }
+
+    public void switchGun()
+    {
+        foreach(GunController gun in guns)//　銃のリストの中をループ
+        {
+            gun.gameObject.SetActive(false);//　全てを非表示
+        }
+        if (guns.Count > 0)
+        {
+            guns[_selectedGun].gameObject.SetActive(true);//　選択中の銃だけを表示
+        }
     }
 
 
-    // ──────────── 非同期処理・デバッグ処理 ──────────── 
+    // ──────────── デバッグ処理 ──────────── 
 
     async UniTaskVoid Sequence()//ここに順次処理を書いていく
     {
@@ -225,6 +291,8 @@ public class PlayerController : MonoBehaviour
         }
     }
 }
+
+// ──────────── 学習用備忘録 ──────────── 
 
 /*　参照型：(代入元も変化する)
  * List<int> myList：実体がない
