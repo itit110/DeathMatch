@@ -647,7 +647,6 @@ GameObject:
   - component: {fileID: 792540771}
   - component: {fileID: 792540776}
   - component: {fileID: 792540775}
-  - component: {fileID: 792540777}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -776,6 +775,12 @@ MonoBehaviour:
   rb: {fileID: 0}
   walkSpeed: 4
   runSpeed: 8
+  guns:
+  - {fileID: 3469287838426757840}
+  - {fileID: 3469287838545459292}
+  - {fileID: 3469287838278813194}
+  _selectedGun: 0
+  _scrollTime: 0.5
 --- !u!54 &792540776
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -803,22 +808,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 112
   m_CollisionDetection: 0
---- !u!114 &792540777
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 792540770}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a365c23df36b3824c9012a5d962a6c0c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GunController
-  shootInterval: 0.1
-  shotDamege: 1
-  adsZoom: 0
-  adsSpeed: 0
 --- !u!1 &835726508
 GameObject:
   m_ObjectHideFlags: 0

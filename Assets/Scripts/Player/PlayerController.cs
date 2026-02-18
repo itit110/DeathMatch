@@ -1,10 +1,11 @@
 using Cysharp.Threading.Tasks;
 using R3;
 using System;
+using System.Collections.Generic;
+using Unity.Burst.Intrinsics;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using System.Collections.Generic;
 
 
 public class PlayerController : MonoBehaviour
@@ -86,17 +87,45 @@ public class PlayerController : MonoBehaviour
 
         Observable.EveryUpdate()
             .Select(_ => ms.scroll.ReadValue().y)// Vector2型の変数にマウススクロールの値を取得
-            .Where(y => y != 0f)
+            .Where(y => y != 0f) //　マウススクロールの値が0でなければ
             .Subscribe(y => {
-                if (!_isSwitcingGun)
+                if (!_isSwitcingGun) //　Switch中でなければ
                 {
                     SwitchingGuns(y).Forget();
                 }
             })
             .RegisterTo(this.GetCancellationTokenOnDestroy());
 
-        
+        // キー入力の数字で銃切り替え
+        var key1 = Observable.EveryUpdate()
+            .Where(_ => kb.digit1Key.wasPressedThisFrame)//　数字キー入力で通知
+            .Select(_ => 0);                             //　キー入力された数値から-1の値
+        var key2 = Observable.EveryUpdate()
+            .Where(_ => kb.digit2Key.wasPressedThisFrame)
+            .Select(_ => 1);
+        var key3 = Observable.EveryUpdate()
+            .Where(_ => kb.digit3Key.wasPressedThisFrame)
+            .Select(_ => 2);
 
+        Observable.Merge(key1, key2, key3)//　キー入力された数値を受け取る
+            .Subscribe(index =>
+            {
+                if (!_isSwitcingGun && index < guns.Count)//　もし銃切り替え中ではないかつ要素数より値が多い
+                {
+                    if (_selectedGun != index)
+                    {
+                        NumSwitchingGun(index).Forget();//　入力された値を引数で渡す
+                    }
+                }
+            })
+            .RegisterTo(this.GetCancellationTokenOnDestroy());
+        /*
+        Observable.EveryUpdate()
+            .Where(_ => ms != null && ms.rightButton.wasPressedThisFrame)
+            .Subscribe(_ => GunAim(true))
+            .RegisterTo(this.GetCancellationTokenOnDestroy());
+        */
+        
 
         //Sequence().Forget();// UniTaskキュー順次実行
     }
@@ -118,18 +147,25 @@ public class PlayerController : MonoBehaviour
         // 走っているかの判定：シフトキーが押されていない
         if(IsGround() && kb.shiftKey.isPressed != true || kb.leftShiftKey.isPressed != true)
         {
-            RunAction(false);
+            RunAction(false); //　デフォルトでは歩き
+        }
+
+        if(ms.rightButton.isPressed)
+        {
+            GunAim(true);
+        }
+        else
+        {
+            GunAim(false);
         }
         
-       
     }
 
     private void LateUpdate()//　カメラ用Update
     {
         // カメラの位置調整（viewPointとカメラの視点を同期）
         cam.transform.position = _viewPoint.position;//カメラの位置
-        cam.transform.rotation = _viewPoint.rotation;//回転
-       
+        cam.transform.rotation = _viewPoint.rotation;//回転  
     }
 
     public void PlayerMove()
@@ -233,7 +269,8 @@ public class PlayerController : MonoBehaviour
 
         if (_scrollY > 0f)//　マウスホイールが0より多い
         {
-            _selectedGun++;
+            _selectedGun++;//　銃の入れ替え
+
             //　カウントでListに格納された要素数を返すList<Gun...>なら３
             if (_selectedGun >= guns.Count)
             {
@@ -242,7 +279,7 @@ public class PlayerController : MonoBehaviour
         }
         else if (_scrollY < 0f)//　マウスホイールが0以内
         {
-            _selectedGun--;
+            _selectedGun--;// 銃を反対へ入れ替える
 
             if(_selectedGun < 0)
             {
@@ -253,6 +290,20 @@ public class PlayerController : MonoBehaviour
         await UniTask.Delay(TimeSpan.FromSeconds(_scrollTime));//　銃切り替え時の遅延処理
 
         _isSwitcingGun = false;//　遅延フラグオフ
+    }
+
+    // キー入力の番号で銃の切り替え
+    private async UniTaskVoid NumSwitchingGun(int gunNum)
+    {
+        if(guns.Count == 0) return;
+
+        _isSwitcingGun = true;
+        _selectedGun = gunNum;
+
+        switchGun();
+        await UniTask.Delay(TimeSpan.FromSeconds(_scrollTime));
+
+        _isSwitcingGun =false;
     }
 
     public void switchGun()
@@ -266,6 +317,27 @@ public class PlayerController : MonoBehaviour
             guns[_selectedGun].gameObject.SetActive(true);//　選択中の銃だけを表示
         }
     }
+
+    public void GunAim(bool aim)
+    {
+        //右クリックで覗き込み
+        if (aim)
+        {
+            cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, 
+                guns[_selectedGun].adsZoom, 
+                guns[_selectedGun].adsSpeed * Time.deltaTime);
+        }
+        else
+        {
+            cam.fieldOfView = Mathf.Lerp(cam.fieldOfView,
+                60,
+                guns[_selectedGun].adsSpeed * Time.deltaTime);
+        }
+    }
+
+    
+
+   
 
 
     // ──────────── デバッグ処理 ──────────── 
@@ -305,6 +377,5 @@ public class PlayerController : MonoBehaviour
  *　値型：（代入元は変化しない）
  * Vector3 posA = new Vector3(1, 0, 0)  new演算子が必要
  * ver posB = posA;  new演算子不要かつ型推論 
- * 
  * 
  */
