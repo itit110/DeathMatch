@@ -11,8 +11,8 @@ public class GunController : MonoBehaviour
     [SerializeField] public float adsZoom;//　覗き込んだ際のズーム
     [SerializeField] public float adsSpeed;//　覗き込む速度
 
-
-
+    [Header("弾痕の設定")]
+    [SerializeField] public GameObject bulletImpact;
 
 
 

@@ -56,7 +56,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("銃弾処理用")]
     [SerializeField] private float _shotTimer;//射撃の間隔
-    [SerializeField] public int[] currentAmmo; //　所持残弾数
+    [SerializeField] public int[] reserveAmmo; //　所持残弾数
     [SerializeField] public int[] maxAmmo;//　最大残弾数
     [Header("マガジン用")]
     [SerializeField] public int[] ammoClip; //　所持残弾数
@@ -86,13 +86,13 @@ public class PlayerController : MonoBehaviour
             .Subscribe(_ => SetCursorLock(false))//　カーソルを非表示　
             .RegisterTo(this.GetCancellationTokenOnDestroy());
 
-        // シフトで走る  
+        // ────── シフトキーで走る ──────
         Observable.EveryUpdate()
             .Where(_ => kb != null && kb.shiftKey.isPressed || kb.leftShiftKey.isPressed)
             .Subscribe(_ => RunAction(true))
             .RegisterTo(this.GetCancellationTokenOnDestroy());
 
-        // 銃の種類を切り替える
+        // ────── 銃の種類をマウスホイールで切り替え ──────
         if (guns.Count > 0) switchGun();
 
         Observable.EveryUpdate()
@@ -106,7 +106,7 @@ public class PlayerController : MonoBehaviour
             })
             .RegisterTo(this.GetCancellationTokenOnDestroy());
 
-        // キー入力の数字で銃切り替え
+        // ────── 銃の種類をキー入力で切り替え ──────
         var key1 = Observable.EveryUpdate()
             .Where(_ => kb.digit1Key.wasPressedThisFrame)//　数字キー入力で通知
             .Select(_ => 0);                             //　キー入力された数値から-1の値
@@ -129,7 +129,21 @@ public class PlayerController : MonoBehaviour
                 }
             })
             .RegisterTo(this.GetCancellationTokenOnDestroy());
-       
+
+        // ────── 左クリックで弾丸の発射・弾痕の処理 ──────
+
+        Observable.EveryUpdate()//撃てるのかの判定：左クリックが押され、選択中の弾薬が０より多く、経過時間より間隔が長い
+            .Where(_ => ms.leftButton.wasPressedThisFrame && ammoClip[_selectedGun] > 0 && Time.time > _shotTimer)
+            .Subscribe(_ => FiringBullet())
+            .RegisterTo(this.GetCancellationTokenOnDestroy());
+
+        // ────── Rキー入力でリロード ──────
+        Observable.EveryUpdate()
+            .Where(_ => kb.rKey.wasPressedThisFrame)
+            .Subscribe(_ => Reload())
+            .RegisterTo(this.GetCancellationTokenOnDestroy());
+
+
 
         //Sequence().Forget();// UniTaskキュー順次実行
     }
@@ -163,8 +177,6 @@ public class PlayerController : MonoBehaviour
             GunAim(false);
         }
 
-        Fire();
-        
     }
 
     private void LateUpdate()//　カメラ用Update
@@ -255,13 +267,11 @@ public class PlayerController : MonoBehaviour
         // マウスを固定し非表示にする処理：FPSで使用
         if (_isLocked)
         {
-            Debug.Log("マウス表示");
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
         else if(!_isLocked)
         {
-            Debug.Log("マウス非表示");
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;   
         }
@@ -340,16 +350,7 @@ public class PlayerController : MonoBehaviour
                 guns[_selectedGun].adsSpeed * Time.deltaTime);
         }
     }
-
-    public void Fire()
-    {
-        //撃てるのかの判定：左クリックが押され、選択中の弾薬が０より多く、経過時間より間隔が長い
-        if(ms.leftButton.isPressed && ammoClip[_selectedGun] >  0 && Time.time > _shotTimer)
-        {
-            FiringBullet();
-        }
-    }
-    
+ 
     public void FiringBullet()//　弾を撃つ関数
     {
         ammoClip[_selectedGun]--; //　選択中の弾をデクリメント
@@ -359,10 +360,40 @@ public class PlayerController : MonoBehaviour
         //　レイを飛ばし、ヒットしたオブジェクトの情報をhitに格納する
         if(Physics.Raycast(ray,out RaycastHit hit))
         {
-            Debug.Log("当たったオブジェクトは" + hit.collider.gameObject.name);//　当たったオブジェクトコンソール表示
+            //Debug.Log("当たったオブジェクトは" + hit.collider.gameObject.name);//　当たったオブジェクトコンソール表示
+
+            //　弾痕を当たった場所へ生成
+            GameObject bulletImpactObject = Instantiate(guns[_selectedGun].bulletImpact,//　弾を生成
+                hit.point + (hit.normal * 0.02f),//　ぶつかったオブジェクトと重ならないように調節
+                Quaternion.LookRotation(hit.normal, Vector3.up));// ぶつかったオブジェクトに対し、Y軸を上（Vector3.up）とし90度の方向へ回転させる
+
+            Destroy(bulletImpactObject, 10f);
         }
         //　射撃後のインターバル
         _shotTimer = Time.time + guns[_selectedGun].shootInterval;
+    }
+
+    private void Reload()
+    {
+        // Rボタンが押されたらリロード
+        
+            //Reloadで補充する弾薬
+            int amountNeed = maxAmmoClip[_selectedGun] - ammoClip[_selectedGun];// macの弾数から現在の弾数を引いて必要な弾数を代入
+
+            //　補充したい弾薬と所持弾薬の比較
+            int ammoAvaliable = amountNeed < reserveAmmo[_selectedGun] ? amountNeed : reserveAmmo[_selectedGun];//　どれくらい補充可能か
+
+            //　リロード可能かどうか
+            if(amountNeed != 0 && reserveAmmo[_selectedGun] != 0)// 弾薬が満タンの時はリロード不可
+            {
+                //　所持弾薬からリロードする弾薬を引く
+                reserveAmmo[_selectedGun] -= ammoAvaliable;
+
+                //　銃に弾薬をセット
+                ammoClip[_selectedGun] += ammoAvaliable;
+            }
+
+        
     }
 
 
