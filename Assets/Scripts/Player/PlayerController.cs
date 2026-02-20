@@ -1,11 +1,13 @@
 using Cysharp.Threading.Tasks;
 using R3;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Burst.Intrinsics;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Random = UnityEngine.Random;
 
 
 public class PlayerController : MonoBehaviour
@@ -62,7 +64,20 @@ public class PlayerController : MonoBehaviour
     [SerializeField] public int[] ammoClip; //　所持残弾数
     [SerializeField] public int[] maxAmmoClip;//　最大残弾数
 
+    [Header("UI用")]
+    [SerializeField] private UIManager uIManager;
 
+  [SerializeField] private AudioSource audioSource;
+
+
+    private void Awake()
+    {
+        // タグからUIマネージャーを探して格納（重い処理）
+        uIManager = GameObject.FindGameObjectWithTag("UIManager").GetComponent<UIManager>();
+        audioSource = GetComponent<AudioSource>();
+    }
+
+   
 
     private void Start()
     {
@@ -184,6 +199,12 @@ public class PlayerController : MonoBehaviour
         // カメラの位置調整（viewPointとカメラの視点を同期）
         cam.transform.position = _viewPoint.position;//カメラの位置
         cam.transform.rotation = _viewPoint.rotation;//回転  
+    }
+
+    private void FixedUpdate()// 0.02秒ごとに更新
+    {
+        // テキスト更新関数呼び出し、実際の内部変数内容を反映
+        uIManager.SettingBulletText(ammoClip[_selectedGun], reserveAmmo[_selectedGun]);
     }
 
     public void PlayerMove()
@@ -357,6 +378,9 @@ public class PlayerController : MonoBehaviour
 
         Ray ray = cam.ViewportPointToRay(new Vector2(0.5f, 0.5f)); //　カメラ中心からレイを飛ばす
 
+        audioSource.Play();
+       //audioSource.PlayPistolFireSE();
+
         //　レイを飛ばし、ヒットしたオブジェクトの情報をhitに格納する
         if(Physics.Raycast(ray,out RaycastHit hit))
         {
@@ -376,7 +400,7 @@ public class PlayerController : MonoBehaviour
     private void Reload()
     {
         // Rボタンが押されたらリロード
-        
+        //audioSource.PlayReloadSE();
             //Reloadで補充する弾薬
             int amountNeed = maxAmmoClip[_selectedGun] - ammoClip[_selectedGun];// macの弾数から現在の弾数を引いて必要な弾数を代入
 
