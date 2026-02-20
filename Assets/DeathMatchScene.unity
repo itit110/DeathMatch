@@ -781,6 +781,11 @@ MonoBehaviour:
   - {fileID: 3469287838278813194}
   _selectedGun: 0
   _scrollTime: 0.5
+  _shotTimer: 0
+  currentAmmo: 320000001400000064000000
+  maxAmmo: 320000001400000064000000
+  ammoClip: 060000000200000018000000
+  maxAmmoClip: 060000000200000018000000
 --- !u!54 &792540776
 Rigidbody:
   m_ObjectHideFlags: 0

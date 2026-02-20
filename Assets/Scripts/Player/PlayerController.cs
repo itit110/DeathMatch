@@ -54,6 +54,16 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float _scrollTime = 0.2f; // 銃の切り替え遅延
     private bool _isSwitcingGun = false;//　遅延フラグ
 
+    [Header("銃弾処理用")]
+    [SerializeField] private float _shotTimer;//射撃の間隔
+    [SerializeField] public int[] currentAmmo; //　所持残弾数
+    [SerializeField] public int[] maxAmmo;//　最大残弾数
+    [Header("マガジン用")]
+    [SerializeField] public int[] ammoClip; //　所持残弾数
+    [SerializeField] public int[] maxAmmoClip;//　最大残弾数
+
+
+
     private void Start()
     {
         //　カメラオブジェクトを格納
@@ -119,13 +129,7 @@ public class PlayerController : MonoBehaviour
                 }
             })
             .RegisterTo(this.GetCancellationTokenOnDestroy());
-        /*
-        Observable.EveryUpdate()
-            .Where(_ => ms != null && ms.rightButton.wasPressedThisFrame)
-            .Subscribe(_ => GunAim(true))
-            .RegisterTo(this.GetCancellationTokenOnDestroy());
-        */
-        
+       
 
         //Sequence().Forget();// UniTaskキュー順次実行
     }
@@ -158,6 +162,8 @@ public class PlayerController : MonoBehaviour
         {
             GunAim(false);
         }
+
+        Fire();
         
     }
 
@@ -335,9 +341,30 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    public void Fire()
+    {
+        //撃てるのかの判定：左クリックが押され、選択中の弾薬が０より多く、経過時間より間隔が長い
+        if(ms.leftButton.isPressed && ammoClip[_selectedGun] >  0 && Time.time > _shotTimer)
+        {
+            FiringBullet();
+        }
+    }
     
+    public void FiringBullet()//　弾を撃つ関数
+    {
+        ammoClip[_selectedGun]--; //　選択中の弾をデクリメント
 
-   
+        Ray ray = cam.ViewportPointToRay(new Vector2(0.5f, 0.5f)); //　カメラ中心からレイを飛ばす
+
+        //　レイを飛ばし、ヒットしたオブジェクトの情報をhitに格納する
+        if(Physics.Raycast(ray,out RaycastHit hit))
+        {
+            Debug.Log("当たったオブジェクトは" + hit.collider.gameObject.name);//　当たったオブジェクトコンソール表示
+        }
+        //　射撃後のインターバル
+        _shotTimer = Time.time + guns[_selectedGun].shootInterval;
+    }
+
 
 
     // ──────────── デバッグ処理 ──────────── 
